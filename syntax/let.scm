@@ -1,5 +1,3 @@
-; (include "environment.scm")
-
 (define (let? exp) (tagged-list? exp 'let))
 (define (let*? exp) (tagged-list? exp 'let*))
 
