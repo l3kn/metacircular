@@ -37,3 +37,35 @@
   "let with a no bindings but multiple expressions in the body"
   output
   (let->lambda input))
+
+(define input 
+  '(let* ((a 1)) (+ a 1)))
+(define output
+  '(let ((a 1)) (+ a 1)))
+(assert-equal 
+  "let*->nested-lets with a single binding"
+  output
+  (let*->nested-lets input))
+
+(define input 
+  '(let* ((a 1) (b (+ a 1))) (+ a b)))
+(define output
+  '(let ((a 1))
+     (let ((b (+ a 1)))
+       (+ a b))))
+(assert-equal 
+  "let*->nested-lets with a single expression in the body"
+  output
+  (let*->nested-lets input))
+
+(define input 
+  '(let* ((a 1) (b (+ a 1))) (+ a b) (* a b)))
+(define output
+  '(let ((a 1))
+     (let ((b (+ a 1)))
+       (+ a b)
+       (* a b))))
+(assert-equal 
+  "let*->nested-lets with multiple expressions in the body"
+  output
+  (let*->nested-lets input))

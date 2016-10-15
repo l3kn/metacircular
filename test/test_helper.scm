@@ -12,5 +12,6 @@
         (display expected)
         (newline)
         (display "  got      ")
-        (display result))))
+        (display result)
+        (newline))))
 

@@ -28,18 +28,18 @@
 ; Ex. 4.7
 
 (define (make-let bindings body)
-  (list 'let bindings body))
+  (cons 'let (cons bindings body)))
 
 (define (let*->nested-lets exp)
   (if (null? (let-bindings exp))
-    (let-body exp)
+    (sequence->exp (let-body exp))
     (expand-nested-let (let-bindings exp) (let-body exp))))
 
 (define (expand-nested-let bindings body)
   (if (null? (cdr bindings)) ; last binding
     (make-let bindings body)
     (make-let (list (car bindings))
-              (expand-nested-let (cdr bindings) body))))
+              (list (expand-nested-let (cdr bindings) body)))))
 
 ; Ex 4.20
 
