@@ -1,10 +1,13 @@
 (define (let? exp) (tagged-list? exp 'let))
 (define (let*? exp) (tagged-list? exp 'let*))
+(define (letrec? exp) (tagged-list? exp 'letrec))
 
 ; Ex. 4.6
 
 (define (let->lambda exp)
-  (expand-let (let-bindings exp) (let-body exp)))
+  (if (null? (let-bindings exp))
+    (sequence->exp (let-body exp))
+    (expand-let (let-bindings exp) (let-body exp))))
 
 (define (let-bindings exp) (cadr exp))
 (define (let-body exp) (cddr exp))
@@ -38,9 +41,8 @@
     (make-let (list (car bindings))
               (expand-nested-let (cdr bindings) body))))
 
-; (define test '(let* ((a 1) (b (+ a 1))) (+ a b)))
-; (newline)
-; (display (let*->nested-lets test))
+; Ex 4.20
 
-; (eval (let*->nested-lets exp) env) should be sufficient
-
+; (define (letrec->let-and-set exp)
+  ; (if (null? (let-bindings exp))
+    ; (let-body exp)
