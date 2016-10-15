@@ -74,7 +74,7 @@
                           (lambda (bindings)
                             (binding-value (first-binding bindings)))
                           "Unbound variable")))
-    (if (eq? result '*unassigned*)
+    (if (eq? result (quote '*unassigned*))
       (error "Unassigned variable" var)
       result)))
 

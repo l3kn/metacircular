@@ -20,6 +20,7 @@
 (include "primitives.scm")
 (include "syntax/let.scm")
 (include "syntax/cond.scm")
+(include "scan_out_defines.scm")
 
 (define (eval_ exp env)
   (cond ((self-evaluating? exp)
@@ -319,22 +320,3 @@
     (define-variable! 'false #f initial-env)
     initial-env))
 
-; Exercise 4.16, 2
-
-(define (scan-out-defines body)
-  (let ((definitions (filter definition? body))
-        (new-body (map (lambda (expr)
-                         (if (definition? expr)
-                           (list 'set!
-                                 (definition-variable expr)
-                                 (definition-value expr))
-                           expr))
-                       body)))
-    (if (or (null? definitions) (null? (cdr definitions)))
-      body
-      (cons 'let
-            (cons 
-              (map (lambda (def)
-                   (list (definition-variable def) '*unassigned*))
-                   definitions)
-              new-body)))))
