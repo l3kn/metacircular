@@ -17,63 +17,13 @@
 
 (use srfi-1)
 (include "environment.scm")
+(include "analyze.scm")
 (include "primitives.scm")
 (include "syntax/let.scm")
 (include "syntax/cond.scm")
 (include "scan_out_defines.scm")
 
-(define (eval_ exp env)
-  (cond ((self-evaluating? exp)
-         exp)
-        ((variable? exp)
-         (lookup-variable-value exp env))
-        ((quoted? exp)
-         (text-of-quotation exp))
-        ((assignment? exp)
-         (eval-assignment exp env))
-        ((definition? exp)
-         (eval-definition exp env))
-        ((if? exp)
-         (eval-if exp env))
-        ((lambda? exp)
-         (make-procedure
-           (lambda-parameters exp)
-           (lambda-body exp)
-           env))
-        ((begin? exp)
-         (eval-sequence
-           (begin-actions exp)
-           env))
-        ((cond? exp)
-         (eval_ (cond->if exp) env))
-        ((let? exp)
-         (eval_ (let->lambda exp) env))
-        ((let*? exp)
-         (eval_ (let*->nested-lets exp) env))
-        ((letrec? exp)
-         (eval_ (letrec->let-and-set exp) env))
-        ((application? exp)
-         (apply_ (eval_ (operator exp) env)
-                (list-of-values
-                  (operands exp)
-                  env)))
-        (else
-          (error "Unknown expression type: EVAL" exp))))
-
-(define (apply_ procedure arguments)
-  (cond ((primitive-procedure? procedure)
-         (apply-primitive-procedure
-           procedure
-           arguments))
-        ((compound-procedure? procedure)
-         (eval-sequence
-           (procedure-body procedure)
-           (extend-environment
-             (procedure-parameters procedure)
-             arguments
-             (procedure-environment procedure))))
-        (else
-          (error "Unknown procedure type: APPLY" procedure))))
+(define (eval_ exp env) ((analyze exp) env))
 
 ; Evaluate each operand and return a list of the corresponding values
 ; (could be simplified using map)
@@ -303,7 +253,8 @@
 ;  * (primitive-procedure? <proc>)
 
 (define (make-procedure parameters body env)
-  (list 'procedure parameters (scan-out-defines body) env))
+  ; (list 'procedure parameters (scan-out-defines body) env))
+  (list 'procedure parameters body env))
 
 (define (compound-procedure? p)
   (tagged-list? p 'procedure))

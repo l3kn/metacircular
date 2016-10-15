@@ -1,6 +1,7 @@
 ; Exercise 4.16, 2
 
 (define (scan-out-defines body)
+  (display body)
   (let ((definitions (filter definition? body))
         (new-body (map (lambda (expr)
                          (if (definition? expr)

@@ -20,6 +20,10 @@
         (list '/ /)
         (list 'map map)
         (list '= =)
+        (list '< <)
+        (list '<= <=)
+        (list '> >)
+        (list '>= >=)
         ; <more primitives>
         ))
 
