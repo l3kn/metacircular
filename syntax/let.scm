@@ -15,6 +15,9 @@
 (define (let-binding-variable binding) (car binding))
 (define (let-binding-value binding) (cadr binding))
 
+(define (make-let-binding variable value)
+  (list variable value))
+
 (define (split-bindings bindings)
   (cons
     (map let-binding-variable bindings)
@@ -43,6 +46,20 @@
 
 ; Ex 4.20
 
-; (define (letrec->let-and-set exp)
-  ; (if (null? (let-bindings exp))
-    ; (let-body exp)
+(define (letrec->let-and-set exp)
+  (if (null? (let-bindings exp))
+    (sequence->exp (let-body exp))
+    (expand-letrec (let-bindings exp) (let-body exp))))
+
+(define (binding->set! binding)
+  (cons 'set! (cons (binding-variable binding) (binding-value binding))))
+
+(define (binding->unassigned binding)
+  (make-let-binding (binding-variable binding) (quote '*unassigned*)))
+
+(define (expand-letrec bindings body)
+  (make-let
+    (map binding->unassigned bindings)
+    (append
+      (map binding->set! bindings)
+      body)))

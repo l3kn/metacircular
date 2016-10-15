@@ -69,3 +69,33 @@
   "let*->nested-lets with multiple expressions in the body"
   output
   (let*->nested-lets input))
+
+(define input
+  '(letrec
+     ((even (lambda (x)
+              (if (= x 0)
+                true
+                (odd (- x 1)))))
+      (odd (lambda (x)
+              (if (= x 0)
+                false
+                (even (- x 1))))))
+       (even 4)))
+(define output
+  '(let
+     ((even '*unassigned*)
+      (odd '*unassigned*))
+     (set! even (lambda (x)
+                  (if (= x 0)
+                true
+                (odd (- x 1)))))
+     (set! odd (lambda (x)
+                 (if (= x 0)
+                   false
+                   (even (- x 1)))))
+     (even 4)))
+
+(assert-equal
+  "letrec->let-and-set"
+  output
+  (letrec->let-and-set input))

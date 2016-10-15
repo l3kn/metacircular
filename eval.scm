@@ -50,6 +50,8 @@
          (eval_ (let->lambda exp) env))
         ((let*? exp)
          (eval_ (let*->nested-lets exp) env))
+        ((letrec? exp)
+         (eval_ (letrec->let-and-set exp) env))
         ((application? exp)
          (apply_ (eval_ (operator exp) env)
                 (list-of-values
