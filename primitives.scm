@@ -24,6 +24,7 @@
         (list '<= <=)
         (list '> >)
         (list '>= >=)
+        (list 'not not)
         ; <more primitives>
         ))
 

@@ -1,14 +1,14 @@
 (include "eval.scm")
 
-(define input-prompt  ";;; M-Eval input:")
-(define output-prompt ";;; M-Eval value:")
+(define input-prompt  ";;; L-Eval input:")
+(define output-prompt ";;; L-Eval value:")
 
 (define (driver-loop)
   (prompt-for-input input-prompt)
   (let ((input (read)))
     (let ((output (eval_ input the-global-environment)))
       (announce-output output-prompt)
-      (user-print output)))
+      (user-print (actual-value output))))
   (driver-loop))
 
 (define (prompt-for-input string)

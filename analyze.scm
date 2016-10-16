@@ -1,4 +1,5 @@
 (define (analyze exp)
+  ; (print "analyzing " exp)
   (cond ((self-evaluating? exp)
          (analyze-self-evaluating exp))
         ((quoted? exp)
@@ -58,7 +59,7 @@
         (con (analyze (if-consequent exp)))
         (alt (analyze (if-alternative exp))))
     (lambda (env)
-      (if (true? (pred env))
+      (if (true? (actual-value (pred env)))
           (con env)
           (alt env)))))
 
@@ -87,12 +88,48 @@
     (lambda (env)
       (execute-application
         (function env)
-        (map (lambda (argument) (argument env))
+        (map (lambda (argument) (delay-it argument env))
              arguments)))))
+
+(define (actual-value exp)
+  (force-it exp))
+
+(define (delay-it exp env)
+  (cond ((self-evaluating? exp) exp)
+        ((thunk? exp) thunk)
+        (else (list 'thunk exp env))))
+
+(define (force-it obj)
+  (cond ((thunk? obj)
+         (let ((result
+                 (actual-value
+                   ((thunk-exp obj) (thunk-env obj)))))
+           (set-car! obj 'evaluated-thunk)
+           ; replace exp with its value
+           (set-car! (cdr obj) result)
+           ; forget unneeded env
+           (set-cdr! (cdr obj) '())
+           result))
+        ((evaluated-thunk? obj)
+         (thunk-value obj))
+        (else obj)))
+
+(define (thunk? exp)
+  (tagged-list? exp 'thunk))
+(define (thunk-exp exp)
+  (cadr exp))
+(define (thunk-env exp)
+  (caddr exp))
+
+(define (evaluated-thunk? obj)
+  (tagged-list? obj 'evaluated-thunk))
+
+(define (thunk-value evaluated-thunk)
+  (cadr evaluated-thunk))
 
 (define (execute-application proc args)
   (cond ((primitive-procedure? proc)
-         (apply-primitive-procedure proc args))
+         (apply-primitive-procedure proc (map actual-value args)))
         ((compound-procedure? proc)
          ((procedure-body proc)
           (extend-environment
