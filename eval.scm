@@ -18,10 +18,13 @@
 (use srfi-1)
 (include "environment.scm")
 (include "primitives.scm")
+(include "scan_out_defines.scm")
 (include "syntax/let.scm")
 (include "syntax/cond.scm")
+(include "thunk.scm")
 
 (define (eval_ exp env)
+  ; (print "eval " exp)
   (cond ((self-evaluating? exp)
          exp)
         ((variable? exp)
@@ -50,60 +53,50 @@
         ((let*? exp)
          (eval_ (let*->nested-lets exp) env))
         ((application? exp)
-         (apply_ (eval_ (operator exp) env)
-                (list-of-values
-                  (operands exp)
-                  env)))
+         ; (print "application? " exp)
+         (apply_ (actual-value (operator exp) env)
+                 (operands exp)
+                 env))
         (else
           (error "Unknown expression type: EVAL" exp))))
 
-(define (apply_ procedure arguments)
+(define (actual-value exp env)
+  (force-it (eval_ exp env)))
+
+(define (apply_ procedure arguments env)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure
            procedure
-           arguments))
+           (list-of-arg-values arguments env)))
         ((compound-procedure? procedure)
          (eval-sequence
            (procedure-body procedure)
            (extend-environment
              (procedure-parameters procedure)
-             arguments
+             (list-of-manipulated-args
+               arguments
+               env
+               (procedure-parameter-tags procedure))
              (procedure-environment procedure))))
         (else
           (error "Unknown procedure type: APPLY" procedure))))
 
-; Evaluate each operand and return a list of the corresponding values
-; (could be simplified using map)
-(define (list-of-values exps env)
-  (if (no-operands? exps)
-      '()
-      (cons (eval_ (first-operand exps) env)
-            (list-of-values
-              (rest-operands exps)
-              env))))
+(define (list-of-arg-values exps env)
+  (map (lambda (exp) (actual-value exp env)) exps))
 
-;;; Exercise 4.1
-;;;
-;;; We cannot tell whether operands are evaluated from left to right
-;;; or from right to left, the order is inherited from the underlying language
-
-;;; left to right
-(define (list-of-values exps env)
-  (if (no-operands? exps)
-    '()
-    (let
-      ((first (eval_ (first-operand exps) env)))
-      (cons first
-            (list-of-values (rest-operands exps) env)))))
-
-;;; right to left
-(define (list-of-values exps env)
-  (if (no-operands? exps)
-    '()
-    (let
-      ((rest (list-of-values (rest-operands exps) env)))
-      (cons (eval_ (first-operand exps) env)
-            rest))))
+(define (list-of-manipulated-args exps env tags)
+  ; (print "args: " tags)
+  (map (lambda (exp tag)
+         (cond ((eq? tag 'lazy)
+                (delay-it exp env))
+               ((eq? tag 'lazy-memo)
+                (delay-it-memo exp env))
+               ((eq? tag 'normal)
+                (actual-value exp env))
+               (else
+                 (error "Unknown tag:
+                         LIST-OF-MANIPULATED-ARGS" tag))))
+       exps tags))
 
 ; Evaluate the predicate of an if expression,
 ; depending on the result, evaluate the consequent or the alternative
@@ -113,7 +106,7 @@
 ; and an implementation language
 
 (define (eval-if exp env)
-  (if (true? (eval_ (if-predicate exp) env))
+  (if (true? (actual-value (if-predicate exp) env))
     (eval_ (if-consequent exp) env)
     (eval_ (if-alternative exp) env)))
 
@@ -121,6 +114,7 @@
 ; in the order in which they occur
 
 (define (eval-sequence exps env)
+  ; (print "eval-sequence " exps)
   (if (last-exp? exps)
       (eval_ (first-exp exps) env)
       (begin
@@ -299,8 +293,24 @@
 ;  * (apply-primitive-procedure <proc> <args>)
 ;  * (primitive-procedure? <proc>)
 
+; Exercise 4.32
+
+(define (argument-tag arg)
+  (if (pair? arg)
+      (cadr arg)
+      'normal))
+
+(define (remove-argument-tag arg)
+  (if (pair? arg)
+      (car arg)
+      arg))
+
 (define (make-procedure parameters body env)
-  (list 'procedure parameters (scan-out-defines body) env))
+  (list 'procedure
+        (map remove-argument-tag parameters)
+        (scan-out-defines body)
+        env
+        (map argument-tag parameters)))
 
 (define (compound-procedure? p)
   (tagged-list? p 'procedure))
@@ -308,6 +318,7 @@
 (define (procedure-parameters p) (cadr p))
 (define (procedure-body p) (caddr p))
 (define (procedure-environment p) (cadddr p))
+(define (procedure-parameter-tags p) (car (cddddr p)))
 
 (define (setup-environment)
   (let ((initial-env
@@ -318,23 +329,3 @@
     (define-variable! 'true #t initial-env)
     (define-variable! 'false #f initial-env)
     initial-env))
-
-; Exercise 4.16, 2
-
-(define (scan-out-defines body)
-  (let ((definitions (filter definition? body))
-        (new-body (map (lambda (expr)
-                         (if (definition? expr)
-                           (list 'set!
-                                 (definition-variable expr)
-                                 (definition-value expr))
-                           expr))
-                       body)))
-    (if (or (null? definitions) (null? (cdr definitions)))
-      body
-      (cons 'let
-            (cons 
-              (map (lambda (def)
-                   (list (definition-variable def) '*unassigned*))
-                   definitions)
-              new-body)))))

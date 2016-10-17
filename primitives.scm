@@ -20,6 +20,14 @@
         (list '/ /)
         (list 'map map)
         (list '= =)
+        (list '< <)
+        (list '<= <=)
+        (list '> >)
+        (list '>= >=)
+        (list 'not not)
+        (list 'newline newline)
+        (list 'display display)
+        (list 'list list)
         ; <more primitives>
         ))
 
