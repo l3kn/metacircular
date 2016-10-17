@@ -19,11 +19,128 @@
 (include "environment.scm")
 (include "analyze.scm")
 (include "primitives.scm")
+(include "scan_out_defines.scm")
 (include "syntax/let.scm")
 (include "syntax/cond.scm")
-(include "scan_out_defines.scm")
+(include "thunk.scm")
 
-(define (eval_ exp env) ((analyze exp) env))
+(define (eval_ exp env)
+  ; (print "eval " exp)
+  (cond ((self-evaluating? exp)
+         exp)
+        ((variable? exp)
+         (lookup-variable-value exp env))
+        ((quoted? exp)
+         (text-of-quotation exp))
+        ((assignment? exp)
+         (eval-assignment exp env))
+        ((definition? exp)
+         (eval-definition exp env))
+        ((if? exp)
+         (eval-if exp env))
+        ((lambda? exp)
+         (make-procedure
+           (lambda-parameters exp)
+           (lambda-body exp)
+           env))
+        ((begin? exp)
+         (eval-sequence
+           (begin-actions exp)
+           env))
+        ((cond? exp)
+         (eval_ (cond->if exp) env))
+        ((let? exp)
+         (eval_ (let->lambda exp) env))
+        ((let*? exp)
+         (eval_ (let*->nested-lets exp) env))
+        ((application? exp)
+         ; (print "application? " exp)
+         (apply_ (actual-value (operator exp) env)
+                 (operands exp)
+                 env))
+        (else
+          (error "Unknown expression type: EVAL" exp))))
+
+(define (actual-value exp env)
+  (force-it (eval_ exp env)))
+
+(define (apply_ procedure arguments env)
+  (cond ((primitive-procedure? procedure)
+         (apply-primitive-procedure
+           procedure
+           (list-of-arg-values arguments env)))
+        ((compound-procedure? procedure)
+         (eval-sequence
+           (procedure-body procedure)
+           (extend-environment
+             (procedure-parameters procedure)
+             (list-of-manipulated-args
+               arguments
+               env
+               (procedure-parameter-tags procedure))
+             (procedure-environment procedure))))
+        (else
+          (error "Unknown procedure type: APPLY" procedure))))
+
+(define (list-of-arg-values exps env)
+  (map (lambda (exp) (actual-value exp env)) exps))
+
+(define (list-of-manipulated-args exps env tags)
+  ; (print "args: " tags)
+  (map (lambda (exp tag)
+         (cond ((eq? tag 'lazy)
+                (delay-it exp env))
+               ((eq? tag 'lazy-memo)
+                (delay-it-memo exp env))
+               ((eq? tag 'normal)
+                (actual-value exp env))
+               (else
+                 (error "Unknown tag:
+                         LIST-OF-MANIPULATED-ARGS" tag))))
+       exps tags))
+
+; Evaluate the predicate of an if expression,
+; depending on the result, evaluate the consequent or the alternative
+;
+; true? highlights the issue of the connection
+; between an implemented language
+; and an implementation language
+
+(define (eval-if exp env)
+  (if (true? (actual-value (if-predicate exp) env))
+    (eval_ (if-consequent exp) env)
+    (eval_ (if-alternative exp) env)))
+
+; Evaluate a sequence of expressions
+; in the order in which they occur
+
+(define (eval-sequence exps env)
+  ; (print "eval-sequence " exps)
+  (if (last-exp? exps)
+      (eval_ (first-exp exps) env)
+      (begin
+        (eval_ (first-exp exps) env)
+        (eval-sequence (rest-exps exps) env))))
+
+; Call eval to find the value to be assigned
+; and install it in the designated environment
+
+(define (eval-assignment exp env)
+  (set-variable-value!
+    (assignment-variable exp)
+    (eval_ (assignment-value exp) env)
+    env)
+  'ok)
+
+; Definitions are handled in a similar manner
+
+(define (eval-definition exp env)
+  (define-variable!
+    (definition-variable exp)
+    (eval_ (definition-value exp) env)
+    env)
+  'ok)
+>>>>>>> lazy-old-eval
 
 ;
 ; Here is the specification of the syntax of our language
@@ -178,9 +295,24 @@
 ;  * (apply-primitive-procedure <proc> <args>)
 ;  * (primitive-procedure? <proc>)
 
+; Exercise 4.32
+
+(define (argument-tag arg)
+  (if (pair? arg)
+      (cadr arg)
+      'normal))
+
+(define (remove-argument-tag arg)
+  (if (pair? arg)
+      (car arg)
+      arg))
+
 (define (make-procedure parameters body env)
-  ; (list 'procedure parameters (scan-out-defines body) env))
-  (list 'procedure parameters body env))
+  (list 'procedure
+        (map remove-argument-tag parameters)
+        (scan-out-defines body)
+        env
+        (map argument-tag parameters)))
 
 (define (compound-procedure? p)
   (tagged-list? p 'procedure))
@@ -188,6 +320,7 @@
 (define (procedure-parameters p) (cadr p))
 (define (procedure-body p) (caddr p))
 (define (procedure-environment p) (cadddr p))
+(define (procedure-parameter-tags p) (car (cddddr p)))
 
 (define (setup-environment)
   (let ((initial-env
@@ -198,4 +331,3 @@
     (define-variable! 'true #t initial-env)
     (define-variable! 'false #f initial-env)
     initial-env))
-
