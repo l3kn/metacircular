@@ -140,7 +140,6 @@
     (eval_ (definition-value exp) env)
     env)
   'ok)
->>>>>>> lazy-old-eval
 
 ;
 ; Here is the specification of the syntax of our language
