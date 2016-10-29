@@ -28,6 +28,7 @@
         (list 'newline newline)
         (list 'display display)
         (list 'list list)
+        (list 'print print)
         ; <more primitives>
         ))
 
