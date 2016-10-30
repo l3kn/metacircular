@@ -53,6 +53,8 @@
          (eval_ (let->lambda exp) env))
         ((let*? exp)
          (eval_ (let*->nested-lets exp) env))
+        ((letrec? exp)
+         (eval_ (letrec->let-and-set exp) env))
         ((application? exp)
          ; (print "application? " exp)
          (apply_ (actual-value (operator exp) env)
@@ -309,7 +311,7 @@
 (define (make-procedure parameters body env)
   (list 'procedure
         (map remove-argument-tag parameters)
-        (scan-out-defines body)
+        body
         env
         (map argument-tag parameters)))
 
@@ -330,3 +332,10 @@
     (define-variable! 'true #t initial-env)
     (define-variable! 'false #f initial-env)
     initial-env))
+
+(define (eval-file file env)
+  (if (not (null? file))
+    (begin
+      (eval_ (car file) env)
+      (eval-file (cdr file) env))))
+

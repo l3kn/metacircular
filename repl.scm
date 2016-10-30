@@ -28,7 +28,7 @@
               '<procedure-env>))
       (display object)))
 
-(define the-global-environment
-  (setup-environment))
+(define the-global-environment (setup-environment))
+(eval-file (read-file "stdlib.meta.scm") the-global-environment)
 
 (driver-loop)

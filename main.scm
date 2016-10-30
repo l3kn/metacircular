@@ -5,12 +5,9 @@
     (print "Usage: csi -s main.scm input-file.scm")
     (exit)))
 
-(define input (read-file (cadddr (argv))))
+(define the-global-environment (setup-environment))
 
-(define (eval-file file env)
-  (if (not (null? file))
-    (begin
-      (eval_ (car file) env)
-      (eval-file (cdr file) env))))
-
-(eval-file input (setup-environment))
+(eval-file (read-file "stdlib.meta.scm") the-global-environment)
+(eval-file
+  (read-file (cadddr (argv)))
+  the-global-environment)
