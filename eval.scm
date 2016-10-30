@@ -30,7 +30,7 @@
         ((variable? exp)
          (lookup-variable-value exp env))
         ((quoted? exp)
-         (text-of-quotation exp))
+         (text-of-quotation exp env))
         ((assignment? exp)
          (eval-assignment exp env))
         ((definition? exp)
@@ -163,8 +163,19 @@
 (define (quoted? exp)
   (tagged-list? exp 'quote))
 
-(define (text-of-quotation exp)
-  (cadr exp))
+(define (text-of-quotation exp env)
+  (let ((body (cadr exp)))
+    (if (list? body)
+      (if (null? body)
+        '()
+        (eval_ (quoted-list->nested-cons body) env))
+      (cadr exp))))
+
+(define (quoted-list->nested-cons qlist)
+  (if (null? qlist)
+    ; We need to double-quote here, because the results are passed through eval_ again
+    ''()
+    (list 'cons (car qlist) (quoted-list->nested-cons (cdr qlist)))))
 
 ; Identify lists beginning with a designated symbol
 
