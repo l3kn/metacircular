@@ -19,7 +19,6 @@
 (include "environment.scm")
 (include "analyze.scm")
 (include "primitives.scm")
-(include "scan_out_defines.scm")
 (include "syntax/let.scm")
 (include "syntax/cond.scm")
 (include "thunk.scm")
