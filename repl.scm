@@ -8,7 +8,7 @@
   (let* ((input (read))
          (output (actual-value input the-global-environment)))
     (announce-output output-prompt)
-    (user-print output)
+    (user-print output 10)
     (newline))
   (driver-loop))
 
@@ -19,14 +19,28 @@
 ; to avoid printing the environment part
 ; of a compound procedure (which might be very long)
 
-(define (user-print object)
-  (if (compound-procedure? object)
-      (display
-        (list 'compound-procedure
-              (procedure-parameters object)
-              (procedure-body object)
-              '<procedure-env>))
-      (display object)))
+(define (print-lazy-pair object limit)
+  (let ((head (force-it (cadr object)))
+        (tail (force-it (caddr object))))
+    (user-print head (- limit 1))
+    (display " . ")
+    (user-print tail (- limit 1))))
+
+(define (user-print object limit)
+  (if (= limit 0)
+    (display "...")
+    (cond
+      ((compound-procedure? object)
+       (display
+         (list 'compound-procedure
+               (procedure-parameters object)
+               (procedure-body object)
+               '<procedure-env>)))
+      ((lazy-pair? object)
+       (display "(")
+       (print-lazy-pair object limit)
+       (display ")"))
+      (else (display object)))))
 
 (define the-global-environment (setup-environment))
 (eval-file (read-file "stdlib.meta.scm") the-global-environment)

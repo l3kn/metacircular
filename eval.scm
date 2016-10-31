@@ -23,6 +23,9 @@
 (include "syntax/cond.scm")
 (include "thunk.scm")
 
+(define (lazy-pair? exp)
+  (tagged-list? exp 'lazy-pair))
+
 (define (eval_ exp env)
   ; (print "eval " exp)
   (cond ((self-evaluating? exp)
@@ -31,6 +34,14 @@
          (lookup-variable-value exp env))
         ((quoted? exp)
          (text-of-quotation exp env))
+        ((tagged-list? exp 'cons)
+         (list 'lazy-pair
+               (delay-it-memo (cadr exp) env)
+               (delay-it-memo (caddr exp) env)))
+        ((tagged-list? exp 'car)
+         (cadr (actual-value (cadr exp) env)))
+        ((tagged-list? exp 'cdr)
+         (caddr (actual-value (cadr exp) env)))
         ((assignment? exp)
          (eval-assignment exp env))
         ((definition? exp)

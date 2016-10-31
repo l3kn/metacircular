@@ -1,7 +1,3 @@
-(define (cons (x lazy-memo) (y lazy-memo)) (lambda (m) (m x y)))
-(define (car z) (z (lambda (p q) p)))
-(define (cdr z) (z (lambda (p q) q)))
-
 (define (list-ref (items lazy-memo) (n lazy-memo))
   (if (= n 0)
     (car items)
